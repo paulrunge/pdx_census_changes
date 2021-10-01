@@ -1,3 +1,2 @@
 # pdx_census_changes
-testing git connect
-and again
+Let's look at how Portland has changed since 2010. First up, demographics and housing stock. 
