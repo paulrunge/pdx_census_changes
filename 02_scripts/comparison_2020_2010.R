@@ -4,7 +4,7 @@ options(scipen = 999)
 
 #setup
 if (!require("pacman")) install.packages("pacman"); library(pacman)
-p_load(tidyverse, tidycensus, rio, sf, tigris, janitor, ggplot2, mapview)
+p_load(tidyverse, tidycensus, rio, sf, tigris, janitor, ggplot2, mapview, RColorBrewer)
 
 var2010 <- load_variables(year = 2010, dataset = "sf1")
 var2020 <- load_variables(year = 2020, dataset = "pl")
@@ -26,7 +26,7 @@ multco_blks2 <- multco_blks %>%
 pdx_boundary <- places(state = "OR", cb = T, year = 2019) %>%
   clean_names() %>%
   filter(str_detect(name, "Portland")) %>%
-  select(geoid, name)
+  select(city = "name")
 
 #data
 dens20 <- get_decennial(geography = "block",
@@ -53,16 +53,31 @@ dens10 <- get_decennial(geography = "block",
 
 density_multco <- dens10 %>%
   clean_names() %>%
-  left_join(dens20_2, by = c("geoid" = "geoid10")) %>%
-  left_join(multco_blks2, by = c("geoid" = "geoid10")) %>%
+  left_join(dens20_2, by = c("geoid" = "geoid10")) 
+
+density_multco2 <- multco_blks2 %>%
+  left_join(density_multco, by = c("geoid10" = "geoid")) %>%
   mutate(pop_acre10 = pop10 / acres,
          pop_acre20 = pop20 / acres,
-         pop_acre_chg = (pop20 - pop10) / acres)
-
-density_pdx <- density_multco %>%
-  st_centroid
+         pop_acre_chg = (pop20 - pop10) / acres,
+         pop_chg = pop20 - pop10)
 
 
+density_pdx <- density_multco2 %>%
+  st_intersection(pdx_boundary) %>%
+  st_set_geometry(NULL)
+
+density_pdx_land <- multco_blks2 %>%
+  select(-acres) %>%
+  left_join(density_pdx, by = ("geoid10")) %>%
+  filter(acres != 0)
+
+#mapviews
+mapview(density_pdx_land, zcol = "pop_acre_chg", at = c(-400, -250, -100, -30, -10, 10, 30, 100, 250, 400), col.regions = brewer.pal(n=9, name = "BrBG"), lwd = 0)
+mapview(density_pdx_land, zcol = "pop_chg", at = c(-1500,-1000,-500,-100,-20,20,100,500,1000,1500), col.regions = brewer.pal(n = 9, name = "BrBG"), lwd = 0)
+mapview(density_pdx_land, zcol = "pop_acre20", lwd = 0)
+
+#leaflets
 
 
 #racial distribution
